@@ -7,6 +7,7 @@ import cupy as cp
 from tqdm.auto import tqdm
 
 from Constants import *
+from LabelKernels import calc_force_cutoff_gpu_sorted_wrapper, calc_force_cutoff_gpu_unsorted_wrapper, recover_kernel
 
 def write_psf(filename, n, mass):
     """
@@ -114,6 +115,87 @@ def run_md(
     if step % save_interval == 0:
       if device:
         frames[step // save_interval] = positions.get()
+      else:
+        frames[step // save_interval] = positions.copy()
+  
+  return frames
+
+# host function
+def run_md_cutoff(
+  positions: cp.ndarray | np.ndarray, # 3 * n
+  velocities: cp.ndarray | np.ndarray, # 3 * n
+  dt: float,
+  mass: float,
+  temperature: float,
+  steps: int,
+  box_size: float,
+  rescale_interval: int,
+  save_interval: int,
+  sorted = False,
+  device = False
+):
+  frames = np.zeros(shape = ((steps-1)//save_interval+1, 3, positions.shape[1]), dtype = np.float64)
+
+  if sorted and device:
+    positions_recovered = cp.zeros(shape = (3, positions.shape[1]), dtype = cp.float64)
+    org_idx = cp.arange(positions.shape[1], dtype=cp.int32)
+
+  if device:
+    forces = cp.zeros(shape = (3, positions.shape[1]), dtype = cp.float64)
+  else:
+    forces = np.zeros(shape = (3, positions.shape[1]), dtype = np.float64)
+
+  if sorted and device:
+    velocities = velocities[:, org_idx]
+  
+  velocities += 0.5 * forces / mass * dt
+
+  positions += velocities * dt
+  if device:
+    positions -= box_size * cp.floor(positions / box_size)
+  else:
+    positions -= box_size * np.floor(positions / box_size)
+  if device:
+    frames[0] = positions.get()
+  else:
+    frames[0] = positions.copy()
+
+  for step in tqdm(range(1, steps)):
+    if device:
+        if sorted:
+          order = calc_force_cutoff_gpu_sorted_wrapper(forces, positions, org_idx)
+          velocities = velocities[:, order]
+        else:
+          calc_force_cutoff_gpu_unsorted_wrapper(forces, positions)
+    else:
+      calc_force_cutoff_sequential_org_wrapper(forces, positions)
+    dv = forces / mass * dt
+
+    if (step-1) % rescale_interval == 0:
+      velocities += 0.5 * dv
+      if device:
+        rescale_d(velocities, mass, temperature)
+      else:
+        rescale_h(velocities, mass, temperature)
+      velocities += 0.5 * dv
+    else:
+      velocities += dv
+
+    positions += velocities * dt
+    if device:
+      positions -= box_size * cp.floor(positions / box_size)
+    else:
+      positions -= box_size * np.floor(positions / box_size)
+  
+    if step % save_interval == 0:
+      if device:
+        if sorted:
+          n = positions.shape[1]
+          grid_size = (n + CUTOFF_BLOCK_SIZE - 1) // CUTOFF_BLOCK_SIZE
+          recover_kernel[grid_size, CUTOFF_BLOCK_SIZE](positions_recovered, positions, org_idx, n)
+          frames[step // save_interval] = positions_recovered.get()
+        else:
+          frames[step // save_interval] = positions.get()
       else:
         frames[step // save_interval] = positions.copy()
   
