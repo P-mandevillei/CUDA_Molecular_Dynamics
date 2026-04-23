@@ -4,6 +4,7 @@ from scipy.optimize import minimize
 import numba as nb
 from numba import cuda
 import cupy as cp
+import nvtx
 
 from Constants import *
 from Forces import *
@@ -256,19 +257,22 @@ def force_mat_sum(
 
 # -------------------------------------------- API --------------------------------------------
 def calc_force_matrix_wrapper(forces, positions, const_params):
-  forces.fill(0)
-  tile_n = math.ceil(positions.shape[1] / FORCE_MAT_TILE_DIM)
-  grid_dim = tile_n * (1 + tile_n) // 2
-  calc_force_matrix[grid_dim, FORCE_MAT_TILE_DIM](forces, positions, tile_n, const_params)
+  with nvtx.annotate("Implicit Matrix", color="blue"):
+    forces.fill(0)
+    tile_n = math.ceil(positions.shape[1] / FORCE_MAT_TILE_DIM)
+    grid_dim = tile_n * (1 + tile_n) // 2
+    calc_force_matrix[grid_dim, FORCE_MAT_TILE_DIM](forces, positions, tile_n, const_params)
 
 def calc_force_segmented_wrapper(forces, positions, const_params):
-  grid_dim = (positions.shape[1] + SEGMENT - 1) // SEGMENT
-  calc_force_segmented[grid_dim, SEGMENT](forces, positions, const_params)
+  with nvtx.annotate("Segmented Traversal", color="red"):
+    grid_dim = (positions.shape[1] + SEGMENT - 1) // SEGMENT
+    calc_force_segmented[grid_dim, SEGMENT](forces, positions, const_params)
 
 def calc_force_matrix_explicit_wrapper(forces, positions, const_params):
-  chain_len = positions.shape[1]
-  n_threads = (chain_len-1) * (1 + (chain_len-1)) // 2
-  grid_dim = (n_threads + FORCE_MAT_EXPLICIT_BLOCK_DIM - 1) // FORCE_MAT_EXPLICIT_BLOCK_DIM
-  forces_mat_d = cp.zeros(shape = (SPACE_N_DIM, n_threads), dtype = cp.float64)
+  with nvtx.annotate("Explicit Matrix", color="green"):
+    chain_len = positions.shape[1]
+    n_threads = (chain_len-1) * (1 + (chain_len-1)) // 2
+    grid_dim = (n_threads + FORCE_MAT_EXPLICIT_BLOCK_DIM - 1) // FORCE_MAT_EXPLICIT_BLOCK_DIM
+    forces_mat_d = cp.zeros(shape = (SPACE_N_DIM, n_threads), dtype = cp.float64)
   calc_force_matrix_explicit[grid_dim, FORCE_MAT_EXPLICIT_BLOCK_DIM](forces_mat_d, positions, const_params)
   force_mat_sum[chain_len, FORCE_MAT_REDUC_BLOCK_DIM](forces_mat_d, forces)
