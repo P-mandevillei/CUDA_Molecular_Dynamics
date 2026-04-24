@@ -157,12 +157,13 @@ def main():
     all_counts = np.zeros((args.n_trials, n_total_cells), dtype=np.int32)
     trial_rows = []
     occupancy_hist = np.zeros(args.n_atoms + 1, dtype=np.int64)
+    n_atoms = args.n_atoms
 
     for trial in range(args.n_trials):
         seed = args.base_seed + trial
         rng = np.random.default_rng(seed)
         positions = initialize_chain_numba(
-            args.n_atoms,
+            n_atoms,
             box_size,
             args.r0,
             rng,

@@ -26,6 +26,18 @@ def atom_label_kernel(
     
     labels[idx] = cell_x + cell_y * dim + cell_z * dim * dim
 
+@cuda.jit(device=True)
+def efficient_neighbor_check_kernel(
+    unique_labels, # non-empty cells (input)
+    label
+):
+    for i in range(unique_labels.size):
+        if unique_labels[i] == label:
+            return i
+        elif unique_labels[i] > label:
+            return -1
+    return -1
+
 # positions, forces are unsorted, so that forces[i] corresponds to positions[i]
 @cuda.jit
 def calc_force_cutoff_gpu_unsorted(
@@ -142,6 +154,7 @@ def calc_force_cutoff_gpu_unsorted(
 @cuda.jit
 def calc_force_cutoff_gpu_sorted(
     forces,
+    unique_labels,
     cell_start,
     positions,
     org_idx,
@@ -213,8 +226,16 @@ def calc_force_cutoff_gpu_sorted(
 
                 nbr = nx + ny * n_cells + nz * n_cells * n_cells
 
-                start = cell_start[nbr]
-                end = cell_start[nbr + 1]
+                # start = cell_start[nbr]
+                # end = cell_start[nbr + 1]
+
+                neighbor_start = efficient_neighbor_check_kernel(unique_labels, nbr)
+                if neighbor_start == -1:
+                    continue
+                
+                start = cell_start[neighbor_start]
+                end = cell_start[neighbor_start + 1]
+
 
                 for j in range(start, end):
                     if j == i:
@@ -272,16 +293,21 @@ def calc_force_cutoff_gpu_sorted_wrapper(forces, positions, org_idx, const_param
     org_idx[:] = prev_org_idx[order]
 
 
-    counts = cp.bincount(labels_sorted, minlength=n_total_cells)
-    cell_start = cp.zeros(n_total_cells + 1, dtype=cp.int32)
-    cell_start[1:] = cp.cumsum(counts)
+    # counts = cp.bincount(labels_sorted, minlength=n_total_cells)
+    # cell_start = cp.zeros(n_total_cells + 1, dtype=cp.int32)
+    # cell_start[1:] = cp.cumsum(counts)
+
+    unique_labels, counts_unique = cp.unique(labels_sorted, return_counts=True)
+    cell_start = counts_unique.cumsum()
 
     # force stage
+    unique_labels_nb = cuda.as_cuda_array(unique_labels)
     cell_start_nb = cuda.as_cuda_array(cell_start)
     positions_nb = cuda.as_cuda_array(positions)
     orig_idx_nb = cuda.as_cuda_array(org_idx)
     calc_force_cutoff_gpu_sorted[grid_size, CUTOFF_BLOCK_SIZE](
         forces,
+        unique_labels_nb,
         cell_start_nb,
         positions_nb,
         orig_idx_nb,
