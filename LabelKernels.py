@@ -50,22 +50,53 @@ def calc_force_cutoff_gpu_unsorted(
     yi = positions[1, i]
     zi = positions[2, i]
 
-    cx = int((xi % box_size) // cell_size)
-    cy = int((yi % box_size) // cell_size)
-    cz = int((zi % box_size) // cell_size)
+    xw = xi
+    yw = yi
+    zw = zi
+
+    while xw >= box_size:
+        xw -= box_size
+    while xw < 0:
+        xw += box_size
+
+    while yw >= box_size:
+        yw -= box_size
+    while yw < 0:
+        yw += box_size
+
+    while zw >= box_size:
+        zw -= box_size
+    while zw < 0:
+        zw += box_size
+
+    cx = int(xw / cell_size)
+    cy = int(yw / cell_size)
+    cz = int(zw / cell_size)
 
     force_x = 0.0
     force_y = 0.0
     force_z = 0.0
 
     for dz in range(-1, 2):
-        nz = (cz + dz + n_cells) % n_cells
+        nz = cz + dz
+        if nz < 0:
+            nz += n_cells
+        elif nz >= n_cells:
+            nz -= n_cells
 
         for dy in range(-1, 2):
-            ny = (cy + dy + n_cells) % n_cells
+            ny = cy + dy
+            if ny < 0:
+                ny += n_cells
+            elif ny >= n_cells:
+                ny -= n_cells
 
             for dx in range(-1, 2):
-                nx = (cx + dx + n_cells) % n_cells
+                nx = cx + dx
+                if nx < 0:
+                    nx += n_cells
+                elif nx >= n_cells:
+                    nx -= n_cells
 
                 nbr = nx + ny * n_cells + nz * n_cells * n_cells
 
@@ -132,22 +163,53 @@ def calc_force_cutoff_gpu_sorted(
     yi = positions[1, i]
     zi = positions[2, i]
 
-    cx = int((xi % box_size) // cell_size)
-    cy = int((yi % box_size) // cell_size)
-    cz = int((zi % box_size) // cell_size)
+    xw = xi
+    yw = yi
+    zw = zi
+
+    while xw >= box_size:
+        xw -= box_size
+    while xw < 0:
+        xw += box_size
+
+    while yw >= box_size:
+        yw -= box_size
+    while yw < 0:
+        yw += box_size
+
+    while zw >= box_size:
+        zw -= box_size
+    while zw < 0:
+        zw += box_size
+
+    cx = int(xw / cell_size)
+    cy = int(yw / cell_size)
+    cz = int(zw / cell_size)
 
     force_x = 0.0
     force_y = 0.0
     force_z = 0.0
 
     for dz in range(-1, 2):
-        nz = (cz + dz + n_cells) % n_cells
+        nz = cz + dz
+        if nz < 0:
+            nz += n_cells
+        elif nz >= n_cells:
+            nz -= n_cells
 
         for dy in range(-1, 2):
-            ny = (cy + dy + n_cells) % n_cells
+            ny = cy + dy
+            if ny < 0:
+                ny += n_cells
+            elif ny >= n_cells:
+                ny -= n_cells
 
             for dx in range(-1, 2):
-                nx = (cx + dx + n_cells) % n_cells
+                nx = cx + dx
+                if nx < 0:
+                    nx += n_cells
+                elif nx >= n_cells:
+                    nx -= n_cells
 
                 nbr = nx + ny * n_cells + nz * n_cells * n_cells
 
