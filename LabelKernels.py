@@ -34,8 +34,8 @@ def calc_force_cutoff_gpu_unsorted(
     positions,
     org_idx,
     cell_size,
-    n_cells,
     box_size,
+    n_cells,
     cutoff,
     const_params
 ):
@@ -226,7 +226,8 @@ def calc_force_cutoff_gpu_sorted_wrapper(forces, positions, org_idx, const_param
         cell_size,
         box_size,
         dim,
-        cutoff
+        cutoff,
+        const_params
     )
     cuda.synchronize()
     return order
