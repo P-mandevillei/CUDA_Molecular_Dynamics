@@ -1,4 +1,5 @@
 import math
+from math import floor
 import numpy as np
 import numba as nb
 from numba import cuda
@@ -19,9 +20,9 @@ def atom_label_kernel(
     x = positions[0, idx]
     y = positions[1, idx]
     z = positions[2, idx]
-    cell_x = int(x // cell_size) % dim
-    cell_y = int(y // cell_size) % dim
-    cell_z = int(z // cell_size) % dim
+    cell_x = int(math.floor(x / cell_size)) % dim
+    cell_y = int(math.floor(y / cell_size)) % dim
+    cell_z = int(math.floor(z / cell_size)) % dim
     
     labels[idx] = cell_x + cell_y * dim + cell_z * dim * dim
 
