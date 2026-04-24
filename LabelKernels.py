@@ -232,7 +232,7 @@ def calc_force_cutoff_gpu_sorted(
                 neighbor_start = efficient_neighbor_check_kernel(unique_labels, nbr)
                 if neighbor_start == -1:
                     continue
-                
+
                 start = cell_start[neighbor_start]
                 end = cell_start[neighbor_start + 1]
 
@@ -298,7 +298,8 @@ def calc_force_cutoff_gpu_sorted_wrapper(forces, positions, org_idx, const_param
     # cell_start[1:] = cp.cumsum(counts)
 
     unique_labels, counts_unique = cp.unique(labels_sorted, return_counts=True)
-    cell_start = counts_unique.cumsum()
+    cell_start = cp.zeros(unique_labels.size + 1, dtype=cp.int32)
+    cell_start[1:] = cp.cumsum(counts_unique)
 
     # force stage
     unique_labels_nb = cuda.as_cuda_array(unique_labels)
