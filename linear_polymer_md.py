@@ -83,6 +83,10 @@ if __name__ == "__main__":
         case 'explicit-matrix':
             calc_force_func = calc_force_matrix_explicit_wrapper
             device = True
+        case 'cutoff-sorted':
+            device = True
+        case 'cutoff-unsorted':
+            device = True
 
     if device:
         import cupy as cp
