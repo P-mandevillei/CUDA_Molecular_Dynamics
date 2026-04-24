@@ -1,10 +1,10 @@
 from Forces import initialize_chain_numba, initialize_velocities_cupy, initialize_velocities_cpu
-from VelocityVerlet import write_traj, run_md, write_psf
+from VelocityVerlet import write_traj, run_md, run_md_cutoff, write_psf
 from ExactKernels import calc_force_sequential, calc_force_matrix_wrapper, calc_force_segmented_wrapper, calc_force_matrix_explicit_wrapper
 import argparse
 import numpy as np
 
-ALGO_CHOICE = ['sequential', 'segmented', 'implicit-matrix', 'explicit-matrix']
+ALGO_CHOICE = ['sequential', 'segmented', 'implicit-matrix', 'explicit-matrix', 'cutoff-sorted', 'cutoff-unsorted']
 
 def parse_simulation_args():
     parser = argparse.ArgumentParser(
@@ -118,20 +118,40 @@ if __name__ == "__main__":
         print(f"save_interval:       {save_interval}")
         print("-----------------------------")
     
-    frames = run_md(
-        pos,
-        v,
-        const_params,
-        calc_force_func,
-        dt,
-        mass,
-        temperature,
-        steps, box_size,
-        rescale_interval,
-        save_interval,
-        device = device,
-        verbose = verbose
-    )
+    if algo in ['cutoff-sorted', 'cutoff-unsorted']:
+        if verbose:
+            print("Running MD with cutoff-based force computation...")
+        frames = run_md_cutoff(
+            pos,
+            v,
+            const_params,
+            dt,
+            mass,
+            temperature,
+            steps, box_size,
+            rescale_interval,
+            save_interval,
+            sorted = (algo == 'cutoff-sorted'),
+            device = device,
+            verbose= verbose
+        )
+    else:
+        if verbose:
+            print("Running MD with exact force computation...")
+        frames = run_md(
+            pos,
+            v,
+            const_params,
+            calc_force_func,
+            dt,
+            mass,
+            temperature,
+            steps, box_size,
+            rescale_interval,
+            save_interval,
+            device = device,
+            verbose = verbose
+        )
 
     if top:
         write_psf(top, n_atoms, mass)

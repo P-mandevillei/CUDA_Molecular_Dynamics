@@ -1,8 +1,10 @@
 import math
+import numpy as np
 import numba as nb
 from numba import cuda
 import cupy as cp
 from Constants import *
+from Forces import calc_force, minimum_image_1d
 
 @cuda.jit
 def atom_label_kernel(
@@ -22,44 +24,6 @@ def atom_label_kernel(
     cell_z = int(z // cell_size) % dim
     
     labels[idx] = cell_x + cell_y * dim + cell_z * dim * dim
-
-@cuda.jit(device=True)
-def harmonic_force_d(r, k, r0):
-    return -k * (r - r0)
-
-well_coeff = 2**(1/6)
-
-@cuda.jit(device=True)
-def repulsive_lj_force_d(r, sigma, epsilon):
-    if r < well_coeff * sigma:
-        if r < DIV_BY_ZERO_GUARD:
-            r = DIV_BY_ZERO_GUARD
-        sixth_pow = (sigma / r) ** 6
-        return -24.0 * epsilon / r * (sixth_pow - 2.0 * sixth_pow * sixth_pow)
-    else:
-        return 0.0
-
-@cuda.jit(device=True)
-def attractive_lj_force_d(r, sigma, epsilon):
-    if r < DIV_BY_ZERO_GUARD:
-        r = DIV_BY_ZERO_GUARD
-    sixth_pow = (sigma / r) ** 6
-    return -24.0 * epsilon / r * (sixth_pow - 2.0 * sixth_pow * sixth_pow)
-
-@cuda.jit(device=True)
-def calc_force_d(distance, params, sep):
-    if sep == HARMONIC:
-        return harmonic_force_d(distance, params[K_IDX], params[R0_IDX])
-    elif sep == REPULSIVE:
-        return repulsive_lj_force_d(distance, params[SIGMA_IDX], params[EPSILON_REPULSIVE_IDX])
-    elif sep >= ATTRACTIVE:
-        return attractive_lj_force_d(distance, params[SIGMA_IDX], params[EPSILON_ATTRACTIVE_IDX])
-    return 0.0
-
-
-@nb.njit
-def minimum_image_1d(dx, box_size):
-    return dx - box_size * math.floor((dx / box_size) + 0.5)
 
 # positions, forces are unsorted, so that forces[i] corresponds to positions[i]
 @cuda.jit
@@ -129,9 +93,9 @@ def calc_force_cutoff_gpu_unsorted(
                         continue
 
                     j_o = org_idx[j]
-                    sep = abs(j_o - i_o)
+                    sep = j_o - i_o
 
-                    fmag = calc_force_d(rij, const_params, sep)
+                    fmag = calc_force(rij, const_params, sep)
 
                     force_x += fmag * xij / rij
                     force_y += fmag * yij / rij
@@ -213,7 +177,7 @@ def calc_force_cutoff_gpu_sorted(
                     j_o = org_idx[j]
                     sep = abs(j_o - i_o)
 
-                    fmag = calc_force_d(rij, params, sep)
+                    fmag = calc_force(rij, params, sep)
 
                     force_x += fmag * xij / rij
                     force_y += fmag * yij / rij
@@ -318,3 +282,33 @@ def recover_kernel(recover_array, candidate_array, org_idx, n):
     recover_array[0, original_position] = candidate_array[0, idx]
     recover_array[1, original_position] = candidate_array[1, idx]
     recover_array[2, original_position] = candidate_array[2, idx]
+
+
+# ---------------------------- Sequential Cutoff Kernels --------------------------------
+@nb.njit
+def calc_force_cutoff_sequential(
+  forces: np.ndarray, # global forces array (output)
+  positions: np.ndarray, # global positions array (input)
+  cutoff: float,
+  const_params: np.ndarray
+):
+  forces.fill(0)
+  params = cuda.const.array_like(const_params)
+  n_particles = positions.shape[1]
+  for i in range(n_particles-1):
+    for j in range(i+1, n_particles):
+      distance = 0
+      for k in range(SPACE_N_DIM):
+        dx = minimum_image_1d(positions[k, i] - positions[k, j], params[BOX_SIZE_IDX])
+        distance += dx**2
+      distance = math.sqrt(distance)
+      if distance > cutoff:
+        continue
+      magnitude = calc_force(distance, params, j - i)
+      for k in range(SPACE_N_DIM):
+        f = magnitude * minimum_image_1d(positions[k, i] - positions[k, j], params[BOX_SIZE_IDX]) / max(distance, DIV_BY_ZERO_GUARD)
+        forces[k, i] += f
+        forces[k, j] -= f
+
+def calc_force_cutoff_sequential_wrapper(forces, positions, const_params):
+    calc_force_cutoff_sequential(forces, positions, const_params[SIGMA_IDX] * CUTOFF_COEFF)

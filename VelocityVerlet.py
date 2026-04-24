@@ -7,7 +7,7 @@ import cupy as cp
 from tqdm.auto import tqdm
 
 from Constants import *
-from LabelKernels import calc_force_cutoff_gpu_sorted_wrapper, calc_force_cutoff_gpu_unsorted_wrapper, recover_kernel
+from LabelKernels import calc_force_cutoff_gpu_sorted_wrapper, calc_force_cutoff_gpu_unsorted_wrapper, recover_kernel, calc_force_cutoff_sequential_wrapper
 
 def write_psf(filename, n, mass):
     """
@@ -124,6 +124,7 @@ def run_md(
 def run_md_cutoff(
   positions: cp.ndarray | np.ndarray, # 3 * n
   velocities: cp.ndarray | np.ndarray, # 3 * n
+  const_params: cp.ndarray | np.ndarray,
   dt: float,
   mass: float,
   temperature: float,
@@ -132,7 +133,8 @@ def run_md_cutoff(
   rescale_interval: int,
   save_interval: int,
   sorted = False,
-  device = False
+  device = False,
+  verbose = False
 ):
   frames = np.zeros(shape = ((steps-1)//save_interval+1, 3, positions.shape[1]), dtype = np.float64)
 
@@ -159,16 +161,17 @@ def run_md_cutoff(
     frames[0] = positions.get()
   else:
     frames[0] = positions.copy()
-
-  for step in tqdm(range(1, steps)):
+  
+  traversal = tqdm(range(1, steps)) if verbose else range(1, steps)
+  for step in traversal:
     if device:
         if sorted:
-          order = calc_force_cutoff_gpu_sorted_wrapper(forces, positions, org_idx)
+          order = calc_force_cutoff_gpu_sorted_wrapper(forces, positions, org_idx, const_params)
           velocities = velocities[:, order]
         else:
-          calc_force_cutoff_gpu_unsorted_wrapper(forces, positions)
+          calc_force_cutoff_gpu_unsorted_wrapper(forces, positions, const_params)
     else:
-      calc_force_cutoff_sequential_org_wrapper(forces, positions)
+      calc_force_cutoff_sequential_wrapper(forces, positions, const_params)
     dv = forces / mass * dt
 
     if (step-1) % rescale_interval == 0:
