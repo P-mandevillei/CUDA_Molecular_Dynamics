@@ -357,7 +357,8 @@ def calc_force_cutoff_sequential(
   const_params: np.ndarray
 ):
   forces.fill(0)
-  params = cuda.const.array_like(const_params)
+#   params = cuda.const.array_like(const_params)
+  params = const_params
   n_particles = positions.shape[1]
   for i in range(n_particles-1):
     for j in range(i+1, n_particles):
