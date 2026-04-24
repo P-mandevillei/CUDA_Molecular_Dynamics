@@ -375,4 +375,4 @@ def calc_force_cutoff_sequential(
         forces[k, j] -= f
 
 def calc_force_cutoff_sequential_wrapper(forces, positions, const_params):
-    calc_force_cutoff_sequential(forces, positions, const_params[SIGMA_IDX] * CUTOFF_COEFF)
+    calc_force_cutoff_sequential(forces, positions, const_params[SIGMA_IDX] * CUTOFF_COEFF, const_params)
