@@ -274,8 +274,8 @@ def calc_force_cutoff_gpu_sorted(
 
 def calc_force_cutoff_gpu_sorted_wrapper(forces, positions, org_idx, const_params):
     labels_d = cp.zeros(positions.shape[1], dtype=cp.int32)
-    dim = CELL_DIM
-    cell_size = float(const_params[BOX_SIZE_IDX] / dim)
+    cell_size = CELL_SIZE
+    dim = float(const_params[BOX_SIZE_IDX] / cell_size)
     box_size = float(const_params[BOX_SIZE_IDX])
     cutoff = float(const_params[SIGMA_IDX] * CUTOFF_COEFF)
     n_total_cells = dim ** 3
@@ -324,8 +324,8 @@ def calc_force_cutoff_gpu_sorted_wrapper(forces, positions, org_idx, const_param
 
 def calc_force_cutoff_gpu_unsorted_wrapper(forces, positions, const_params):
     labels_d = cp.zeros(positions.shape[1], dtype=cp.int32)
-    dim = CELL_DIM
-    cell_size = float(const_params[BOX_SIZE_IDX] / dim)
+    cell_size = CELL_SIZE
+    dim = float(const_params[BOX_SIZE_IDX] / cell_size)
     box_size = float(const_params[BOX_SIZE_IDX])
     cutoff = float(const_params[SIGMA_IDX] * CUTOFF_COEFF)
     n_total_cells = dim ** 3
