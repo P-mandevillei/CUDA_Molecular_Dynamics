@@ -4,7 +4,7 @@ from ExactKernels import calc_force_sequential, calc_force_matrix_wrapper, calc_
 import argparse
 import numpy as np
 
-ALGO_CHOICE = ['sequential', 'segmented', 'implicit-matrix', 'explicit-matrix', 'cutoff-sorted', 'cutoff-unsorted']
+ALGO_CHOICE = ['sequential', 'segmented', 'implicit-matrix', 'explicit-matrix', 'cutoff-sorted', 'cutoff-unsorted', 'cutoff-sequential']
 
 def parse_simulation_args():
     parser = argparse.ArgumentParser(
@@ -87,6 +87,8 @@ if __name__ == "__main__":
             device = True
         case 'cutoff-unsorted':
             device = True
+        case 'cutoff-sequential':
+            device = False
 
     if device:
         import cupy as cp
@@ -122,7 +124,7 @@ if __name__ == "__main__":
         print(f"save_interval:       {save_interval}")
         print("-----------------------------")
     
-    if algo in ['cutoff-sorted', 'cutoff-unsorted']:
+    if algo in ['cutoff-sorted', 'cutoff-unsorted', 'cutoff-sequential']:
         if verbose:
             print("Running MD with cutoff-based force computation...")
         frames = run_md_cutoff(
