@@ -22,12 +22,6 @@ def parse_args():
         help="Number of atoms in each initialized chain.",
     )
     parser.add_argument(
-        "--n-trials",
-        type=int,
-        default=100,
-        help="Number of randomized initializations to sample.",
-    )
-    parser.add_argument(
         "--r0",
         type=float,
         default=1.0,
@@ -43,7 +37,7 @@ def parse_args():
         "--cell-size",
         type=float,
         default=CELL_SIZE,
-        help="Physical size of each spatial cell.",
+        help="The dimension of the cell.",
     )
     parser.add_argument(
         "--base-seed",
@@ -88,26 +82,8 @@ def count_atoms_per_cell(
     cell_dim: int,
 ) -> np.ndarray:
     labels = label_atoms_cpu(positions, box_size, cell_dim)
-    n_total_cells = cell_dim ** 3
-    return np.bincount(labels, minlength=n_total_cells)
-
-
-def summarize_trial(counts: np.ndarray, trial: int, seed: int) -> dict:
-    occupied = counts > 0
-    occupied_counts = counts[occupied]
-    occupied_cells = int(occupied.sum())
-
-    return {
-        "trial": trial,
-        "seed": seed,
-        "occupied_cells": occupied_cells,
-        "empty_cells": int(counts.size - occupied_cells),
-        "occupied_fraction": float(occupied_cells / counts.size),
-        "mean_atoms_per_cell_all": float(counts.mean()),
-        "mean_atoms_per_occupied_cell": float(occupied_counts.mean()) if occupied_cells else 0.0,
-        "std_atoms_per_cell": float(counts.std()),
-        "max_atoms_in_cell": int(counts.max()),
-    }
+    unique_labels, counts = np.unique(labels, return_counts=True)
+    return unique_labels, counts
 
 def write_csv(path: Path, fieldnames: list[str], rows: list[dict]) -> None:
     with path.open("w", newline="") as handle:
@@ -126,11 +102,10 @@ def maybe_save_plot(output_path: Path, counts: np.ndarray) -> bool:
 
     # Plot histogram
     plt.figure(figsize=(10, 6))
-    x = np.arange(counts.size)
-    plt.bar(x, counts, width=0.9, edgecolor='black', alpha=0.7)
-    plt.xlabel('Atoms in cell')
-    plt.ylabel('Number of cells across all trials')
-    plt.title('Distribution of Atoms per Cell')
+    plt.hist(counts, bins=range(1, int(counts.max()) + 2), edgecolor='black', alpha=0.7)
+    plt.xlabel('Number of atoms per cell')
+    plt.ylabel('Frequency (number of cells)')
+    plt.title('Distribution of Atoms in Cells')
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.savefig(output_path, dpi=200)
@@ -150,87 +125,42 @@ def main():
     cell_size = args.cell_size
     if cell_size <= 0:
         raise ValueError("cell_size must be positive.")
-    if box_size <= 0:
-        raise ValueError("box_size must be positive.")
     cell_dim = int(box_size / cell_size)
     if cell_dim <= 0:
         raise ValueError("cell_size is too large for the selected box_size.")
     n_total_cells = cell_dim ** 3
 
-    occupancy_hist = np.zeros(n_atoms + 1, dtype=np.int64)
-    trial_rows = []
-
-    for trial in range(args.n_trials):
-        seed = args.base_seed + trial
-        rng = np.random.default_rng(seed)
-        positions = initialize_chain_numba(
-            n_atoms,
-            box_size,
-            args.r0,
-            rng,
-            dtype=dtype,
-        )
-        counts = count_atoms_per_cell(positions, box_size, cell_dim)
-        trial_rows.append(summarize_trial(counts, trial, seed))
-        occupancy_hist += np.bincount(counts, minlength=n_atoms + 1)
-
+    seed = args.base_seed
+    rng = np.random.default_rng(seed)
+    positions = initialize_chain_numba(
+        n_atoms,
+        box_size,
+        args.r0,
+        rng,
+        dtype=dtype,
+    )
+    unique_labels, counts = count_atoms_per_cell(positions, box_size, cell_dim)
+    
     write_csv(
         args.output_dir / "occupancy_distribution.csv",
-        fieldnames=["atoms_in_cell", "num_cells", "probability"],
-        rows=[
-            {
-                "atoms_in_cell": atoms_in_cell,
-                "num_cells": int(num_cells),
-                "probability": float(num_cells / (args.n_trials * n_total_cells)),
-            }
-            for atoms_in_cell, num_cells in enumerate(occupancy_hist)
-        ],
-    )
-    write_csv(
-        args.output_dir / "trial_stats.csv",
-        fieldnames=[
-            "trial",
-            "seed",
-            "occupied_cells",
-            "empty_cells",
-            "occupied_fraction",
-            "mean_atoms_per_cell_all",
-            "mean_atoms_per_occupied_cell",
-            "std_atoms_per_cell",
-            "max_atoms_in_cell",
-        ],
-        rows=trial_rows,
+        fieldnames=["cell_label", "atoms_in_cell"],
+        rows=[{"cell_label": int(label), "atoms_in_cell": int(count)} for label, count in zip(unique_labels, counts)],
     )
 
     if args.plot:
         maybe_save_plot(
             args.output_dir / "occupancy_distribution.png",
-            counts=occupancy_hist,
+            counts=counts,
         )
-
-    occupied_cells = np.array([row["occupied_cells"] for row in trial_rows], dtype=np.int64)
-    occupied_means = np.array([row["mean_atoms_per_occupied_cell"] for row in trial_rows], dtype=np.float64)
-    max_counts = np.array([row["max_atoms_in_cell"] for row in trial_rows], dtype=np.int64)
 
     print("Experiment complete.")
     print("-----------------------------")
-    print(f"Trials: {args.n_trials}")
     print(f"Atoms per trial: {args.n_atoms}")
     print(f"Box size: {box_size}")
     print(f"Cell grid: {cell_dim} x {cell_dim} x {cell_dim} ({n_total_cells} cells)")
     print(f"Mean atoms per cell over all cells: {args.n_atoms / n_total_cells:.6f}")
-    print(
-        "Occupied cells per trial: "
-        f"mean={occupied_cells.mean():.2f}, min={occupied_cells.min()}, max={occupied_cells.max()}"
-    )
-    print(
-        "Mean atoms per occupied cell: "
-        f"mean={occupied_means.mean():.4f}, min={occupied_means.min():.4f}, max={occupied_means.max():.4f}"
-    )
-    print(
-        "Maximum occupancy in any cell per trial: "
-        f"mean={max_counts.mean():.2f}, min={max_counts.min()}, max={max_counts.max()}"
-    )
+    print(f"Unique occupancy counts: {list(zip(unique_labels, counts))}")
+    print(f"Non-empty cell rate is: {counts.size / n_total_cells:.6f}")
 
 if __name__ == "__main__":
     main()
