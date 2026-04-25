@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 
-from Constants import CELL_DIM
+from Constants import CELL_SIZE
 from Forces import initialize_chain_numba
 
 
@@ -40,10 +40,10 @@ def parse_args():
         help="Simulation box size. Defaults to n_atoms * r0 * 2.5.",
     )
     parser.add_argument(
-        "--cell-dim",
-        type=int,
-        default=CELL_DIM,
-        help="Number of cells per spatial dimension.",
+        "--cell-size",
+        type=float,
+        default=CELL_SIZE,
+        help="Physical size of each spatial cell.",
     )
     parser.add_argument(
         "--base-seed",
@@ -62,11 +62,6 @@ def parse_args():
         type=Path,
         default=Path("count_experiments"),
         help="Directory where CSV summaries are written.",
-    )
-    parser.add_argument(
-        "--save-raw-counts",
-        action="store_true",
-        help="Also save the per-trial cell-count matrix as a NumPy array.",
     )
     parser.add_argument(
         "--plot",
@@ -97,52 +92,50 @@ def count_atoms_per_cell(
     return np.bincount(labels, minlength=n_total_cells)
 
 
-def summarize_trial(counts: np.ndarray, n_atoms: int, trial: int, seed: int) -> dict:
+def summarize_trial(counts: np.ndarray, trial: int, seed: int) -> dict:
     occupied = counts > 0
     occupied_counts = counts[occupied]
     occupied_cells = int(occupied.sum())
-    total_cells = int(counts.size)
 
     return {
         "trial": trial,
         "seed": seed,
-        "n_atoms": n_atoms,
-        "total_cells": total_cells,
         "occupied_cells": occupied_cells,
-        "empty_cells": total_cells - occupied_cells,
-        "occupied_fraction": occupied_cells / total_cells,
+        "empty_cells": int(counts.size - occupied_cells),
+        "occupied_fraction": float(occupied_cells / counts.size),
         "mean_atoms_per_cell_all": float(counts.mean()),
-        "mean_atoms_per_occupied_cell": (
-            float(occupied_counts.mean()) if occupied_cells else 0.0
-        ),
+        "mean_atoms_per_occupied_cell": float(occupied_counts.mean()) if occupied_cells else 0.0,
         "std_atoms_per_cell": float(counts.std()),
         "max_atoms_in_cell": int(counts.max()),
     }
-
 
 def write_csv(path: Path, fieldnames: list[str], rows: list[dict]) -> None:
     with path.open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
+    
+    print(f"Saved CSV summary to {path}")
 
 
-def maybe_save_plot(output_path: Path, occupancy_hist: np.ndarray) -> bool:
+def maybe_save_plot(output_path: Path, counts: np.ndarray) -> bool:
     try:
         import matplotlib.pyplot as plt
     except ImportError:
         return False
 
-    x = np.arange(occupancy_hist.size)
+    # Plot histogram
     plt.figure(figsize=(10, 6))
-    plt.bar(x, occupancy_hist, width=0.9, edgecolor="black")
-    plt.xlabel("Atoms in cell")
-    plt.ylabel("Number of cells across all trials")
-    plt.title("Aggregated atoms-per-cell distribution")
-    plt.grid(True, axis="y", alpha=0.3)
+    x = np.arange(counts.size)
+    plt.bar(x, counts, width=0.9, edgecolor='black', alpha=0.7)
+    plt.xlabel('Atoms in cell')
+    plt.ylabel('Number of cells across all trials')
+    plt.title('Distribution of Atoms per Cell')
+    plt.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.savefig(output_path, dpi=200)
     plt.close()
+    print(f"Saved plot to {output_path}")
     return True
 
 
@@ -150,14 +143,22 @@ def main():
     args = parse_args()
     dtype = np.float32 if args.dtype == "float32" else np.float64
     box_size = args.box_size if args.box_size is not None else args.n_atoms * args.r0 * 2.5
-    n_total_cells = args.cell_dim ** 3
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    all_counts = np.zeros((args.n_trials, n_total_cells), dtype=np.int32)
-    trial_rows = []
-    occupancy_hist = np.zeros(args.n_atoms + 1, dtype=np.int64)
     n_atoms = args.n_atoms
+    cell_size = args.cell_size
+    if cell_size <= 0:
+        raise ValueError("cell_size must be positive.")
+    if box_size <= 0:
+        raise ValueError("box_size must be positive.")
+    cell_dim = int(box_size / cell_size)
+    if cell_dim <= 0:
+        raise ValueError("cell_size is too large for the selected box_size.")
+    n_total_cells = cell_dim ** 3
+
+    occupancy_hist = np.zeros(n_atoms + 1, dtype=np.int64)
+    trial_rows = []
 
     for trial in range(args.n_trials):
         seed = args.base_seed + trial
@@ -169,31 +170,27 @@ def main():
             rng,
             dtype=dtype,
         )
-        counts = count_atoms_per_cell(positions, box_size, args.cell_dim)
-        all_counts[trial] = counts
-        trial_rows.append(summarize_trial(counts, args.n_atoms, trial, seed))
+        counts = count_atoms_per_cell(positions, box_size, cell_dim)
+        trial_rows.append(summarize_trial(counts, trial, seed))
+        occupancy_hist += np.bincount(counts, minlength=n_atoms + 1)
 
-        trial_hist = np.bincount(counts, minlength=args.n_atoms + 1)
-        occupancy_hist[: trial_hist.size] += trial_hist
-
-    distribution_rows = []
-    total_cell_samples = int(all_counts.size)
-    for atoms_in_cell, num_cells in enumerate(occupancy_hist):
-        distribution_rows.append(
+    write_csv(
+        args.output_dir / "occupancy_distribution.csv",
+        fieldnames=["atoms_in_cell", "num_cells", "probability"],
+        rows=[
             {
                 "atoms_in_cell": atoms_in_cell,
                 "num_cells": int(num_cells),
-                "probability": float(num_cells / total_cell_samples),
+                "probability": float(num_cells / (args.n_trials * n_total_cells)),
             }
-        )
-
+            for atoms_in_cell, num_cells in enumerate(occupancy_hist)
+        ],
+    )
     write_csv(
         args.output_dir / "trial_stats.csv",
-        [
+        fieldnames=[
             "trial",
             "seed",
-            "n_atoms",
-            "total_cells",
             "occupied_cells",
             "empty_cells",
             "occupied_fraction",
@@ -202,56 +199,38 @@ def main():
             "std_atoms_per_cell",
             "max_atoms_in_cell",
         ],
-        trial_rows,
-    )
-    write_csv(
-        args.output_dir / "occupancy_distribution.csv",
-        ["atoms_in_cell", "num_cells", "probability"],
-        distribution_rows,
+        rows=trial_rows,
     )
 
-    if args.save_raw_counts:
-        np.save(args.output_dir / "cell_counts.npy", all_counts)
-
-    plot_saved = False
     if args.plot:
-        plot_saved = maybe_save_plot(
+        maybe_save_plot(
             args.output_dir / "occupancy_distribution.png",
-            occupancy_hist,
+            counts=occupancy_hist,
         )
 
-    occupied_cells = [row["occupied_cells"] for row in trial_rows]
-    occupied_means = [row["mean_atoms_per_occupied_cell"] for row in trial_rows]
-    max_counts = [row["max_atoms_in_cell"] for row in trial_rows]
+    occupied_cells = np.array([row["occupied_cells"] for row in trial_rows], dtype=np.int64)
+    occupied_means = np.array([row["mean_atoms_per_occupied_cell"] for row in trial_rows], dtype=np.float64)
+    max_counts = np.array([row["max_atoms_in_cell"] for row in trial_rows], dtype=np.int64)
 
     print("Experiment complete.")
+    print("-----------------------------")
     print(f"Trials: {args.n_trials}")
     print(f"Atoms per trial: {args.n_atoms}")
     print(f"Box size: {box_size}")
-    print(f"Cell grid: {args.cell_dim} x {args.cell_dim} x {args.cell_dim} ({n_total_cells} cells)")
+    print(f"Cell grid: {cell_dim} x {cell_dim} x {cell_dim} ({n_total_cells} cells)")
     print(f"Mean atoms per cell over all cells: {args.n_atoms / n_total_cells:.6f}")
     print(
         "Occupied cells per trial: "
-        f"mean={np.mean(occupied_cells):.2f}, min={np.min(occupied_cells)}, max={np.max(occupied_cells)}"
+        f"mean={occupied_cells.mean():.2f}, min={occupied_cells.min()}, max={occupied_cells.max()}"
     )
     print(
         "Mean atoms per occupied cell: "
-        f"mean={np.mean(occupied_means):.4f}, min={np.min(occupied_means):.4f}, max={np.max(occupied_means):.4f}"
+        f"mean={occupied_means.mean():.4f}, min={occupied_means.min():.4f}, max={occupied_means.max():.4f}"
     )
     print(
         "Maximum occupancy in any cell per trial: "
-        f"mean={np.mean(max_counts):.2f}, min={np.min(max_counts)}, max={np.max(max_counts)}"
+        f"mean={max_counts.mean():.2f}, min={max_counts.min()}, max={max_counts.max()}"
     )
-    print(f"Saved trial stats to {args.output_dir / 'trial_stats.csv'}")
-    print(f"Saved occupancy distribution to {args.output_dir / 'occupancy_distribution.csv'}")
-    if args.save_raw_counts:
-        print(f"Saved raw counts to {args.output_dir / 'cell_counts.npy'}")
-    if args.plot:
-        if plot_saved:
-            print(f"Saved plot to {args.output_dir / 'occupancy_distribution.png'}")
-        else:
-            print("Plot requested, but matplotlib is not installed in the active environment.")
-
 
 if __name__ == "__main__":
     main()
