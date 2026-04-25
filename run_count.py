@@ -57,11 +57,6 @@ def parse_args():
         default=Path("count_experiments"),
         help="Directory where CSV summaries are written.",
     )
-    parser.add_argument(
-        "--plot",
-        action="store_true",
-        help="Save a bar chart of the aggregated occupancy distribution if matplotlib is installed.",
-    )
     return parser.parse_args()
 
 
@@ -94,7 +89,7 @@ def write_csv(path: Path, fieldnames: list[str], rows: list[dict]) -> None:
     print(f"Saved CSV summary to {path}")
 
 
-def maybe_save_plot(output_path: Path, counts: np.ndarray) -> bool:
+def save_plot(output_path: Path, counts: np.ndarray) -> bool:
     try:
         import matplotlib.pyplot as plt
     except ImportError:
@@ -147,11 +142,10 @@ def main():
         rows=[{"cell_label": int(label), "atoms_in_cell": int(count)} for label, count in zip(unique_labels, counts)],
     )
 
-    if args.plot:
-        maybe_save_plot(
-            args.output_dir / "occupancy_distribution.png",
-            counts=counts,
-        )
+    save_plot(
+        args.output_dir / "occupancy_distribution.png",
+        counts=counts,
+    )
 
     print("Experiment complete.")
     print("-----------------------------")
@@ -159,7 +153,6 @@ def main():
     print(f"Box size: {box_size}")
     print(f"Cell grid: {cell_dim} x {cell_dim} x {cell_dim} ({n_total_cells} cells)")
     print(f"Mean atoms per cell over all cells: {args.n_atoms / n_total_cells:.6f}")
-    print(f"Unique occupancy counts: {list(zip(unique_labels, counts))}")
     print(f"Non-empty cell rate is: {counts.size / n_total_cells:.6f}")
 
 if __name__ == "__main__":
