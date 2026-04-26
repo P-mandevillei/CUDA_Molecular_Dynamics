@@ -1,0 +1,221 @@
+[14327] python3.12@127.0.0.1
+  calc_force_cutoff_gpu_unsorted[v2,cw51cXTLSUwv1sDUaKthrqNgqqmjgOR3W3Cw6igA9duC0hkwnNGiHEkYkrqQBFBTDEwCyQe21eqwcFW3UoDGjzpQEsgzrtUEAA_3d_3d](Array<double, 2, C, mutable, aligned>, Array<int, 1, C, mutable, aligned>, Array<int, 1, C, mutable, aligned>, Array<double, 2, C, mutable, aligned>, Array<int, 1, C, mutable, aligned>, double, double, double, double, Array<double, 1, C, mutable, aligned>) (8, 1, 1)x(128, 1, 1), Context 1, Stream 7, Device 0, CC 7.5
+    Section: GPU Speed Of Light Throughput
+    ----------------------- ----------- ------------
+    Metric Name             Metric Unit Metric Value
+    ----------------------- ----------- ------------
+    DRAM Frequency                  Ghz         5.00
+    SM Frequency                    Mhz       584.98
+    Elapsed Cycles                cycle    1,289,078
+    Memory Throughput                 %         0.59
+    DRAM Throughput                   %         0.01
+    Duration                         ms         2.20
+    L1/TEX Cache Throughput           %         2.97
+    L2 Cache Throughput               %         0.02
+    SM Active Cycles              cycle   257,546.98
+    Compute (SM) Throughput           %        14.40
+    ----------------------- ----------- ------------
+
+    OPT   This kernel grid is too small to fill the available resources on this device, resulting in only 0.0 full      
+          waves across all SMs. Look at Launch Statistics for more details.                                             
+
+    Section: GPU Speed Of Light Roofline Chart
+    INF   The ratio of peak float (fp32) to double (fp64) performance on this device is 32:1. The workload achieved     
+          close to 0% of this device's fp32 peak performance and  close to 0% of its fp64 peak performance. See the     
+          Kernel Profiling Guide (https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#roofline) for more   
+          details on roofline analysis.                                                                                 
+
+    Section: GPU and Memory Workload Distribution
+    -------------------------- ----------- ------------
+    Metric Name                Metric Unit Metric Value
+    -------------------------- ----------- ------------
+    Average DRAM Active Cycles       cycle        1,307
+    Total DRAM Elapsed Cycles        cycle   88,066,048
+    Average L1 Active Cycles         cycle   257,546.98
+    Total L1 Elapsed Cycles          cycle   51,558,544
+    Average L2 Active Cycles         cycle     3,239.62
+    Total L2 Elapsed Cycles          cycle   60,289,184
+    Average SM Active Cycles         cycle   257,546.98
+    Total SM Elapsed Cycles          cycle   51,558,544
+    Average SMSP Active Cycles       cycle   257,523.06
+    Total SMSP Elapsed Cycles        cycle  206,234,176
+    -------------------------- ----------- ------------
+
+    OPT   Est. Speedup: 15.98%                                                                                          
+          One or more SMs have a much lower number of active cycles than the average number of active cycles. Maximum   
+          instance value is 80.00% above the average, while the minimum instance value is 100.00% below the average.    
+    ----- --------------------------------------------------------------------------------------------------------------
+    OPT   Est. Speedup: 15.98%                                                                                          
+          One or more SMSPs have a much lower number of active cycles than the average number of active cycles. Maximum 
+          instance value is 80.00% above the average, while the minimum instance value is 100.00% below the average.    
+    ----- --------------------------------------------------------------------------------------------------------------
+    OPT   Est. Speedup: 15.98%                                                                                          
+          One or more L1 Slices have a much lower number of active cycles than the average number of active cycles.     
+          Maximum instance value is 80.00% above the average, while the minimum instance value is 100.00% below the     
+          average.                                                                                                      
+
+  calc_force_cutoff_gpu_unsorted[v2,cw51cXTLSUwv1sDUaKthrqNgqqmjgOR3W3Cw6igA9duC0hkwnNGiHEkYkrqQBFBTDEwCyQe21eqwcFW3UoDGjzpQEsgzrtUEAA_3d_3d](Array<double, 2, C, mutable, aligned>, Array<int, 1, C, mutable, aligned>, Array<int, 1, C, mutable, aligned>, Array<double, 2, C, mutable, aligned>, Array<int, 1, C, mutable, aligned>, double, double, double, double, Array<double, 1, C, mutable, aligned>) (8, 1, 1)x(128, 1, 1), Context 1, Stream 7, Device 0, CC 7.5
+    Section: GPU Speed Of Light Throughput
+    ----------------------- ----------- ------------
+    Metric Name             Metric Unit Metric Value
+    ----------------------- ----------- ------------
+    DRAM Frequency                  Ghz         5.00
+    SM Frequency                    Mhz       584.98
+    Elapsed Cycles                cycle    1,274,470
+    Memory Throughput                 %         0.59
+    DRAM Throughput                   %         0.01
+    Duration                         ms         2.18
+    L1/TEX Cache Throughput           %         2.97
+    L2 Cache Throughput               %         0.02
+    SM Active Cycles              cycle   254,651.23
+    Compute (SM) Throughput           %        14.40
+    ----------------------- ----------- ------------
+
+    OPT   This kernel grid is too small to fill the available resources on this device, resulting in only 0.0 full      
+          waves across all SMs. Look at Launch Statistics for more details.                                             
+
+    Section: GPU Speed Of Light Roofline Chart
+    INF   The ratio of peak float (fp32) to double (fp64) performance on this device is 32:1. The workload achieved     
+          close to 0% of this device's fp32 peak performance and  close to 0% of its fp64 peak performance. See the     
+          Kernel Profiling Guide (https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#roofline) for more   
+          details on roofline analysis.                                                                                 
+
+    Section: GPU and Memory Workload Distribution
+    -------------------------- ----------- ------------
+    Metric Name                Metric Unit Metric Value
+    -------------------------- ----------- ------------
+    Average DRAM Active Cycles       cycle     1,277.50
+    Total DRAM Elapsed Cycles        cycle   87,076,864
+    Average L1 Active Cycles         cycle   254,651.23
+    Total L1 Elapsed Cycles          cycle   50,981,608
+    Average L2 Active Cycles         cycle     3,672.03
+    Total L2 Elapsed Cycles          cycle   59,606,016
+    Average SM Active Cycles         cycle   254,651.23
+    Total SM Elapsed Cycles          cycle   50,981,608
+    Average SMSP Active Cycles       cycle   254,627.12
+    Total SMSP Elapsed Cycles        cycle  203,926,432
+    -------------------------- ----------- ------------
+
+    OPT   Est. Speedup: 15.98%                                                                                          
+          One or more SMs have a much lower number of active cycles than the average number of active cycles. Maximum   
+          instance value is 80.00% above the average, while the minimum instance value is 100.00% below the average.    
+    ----- --------------------------------------------------------------------------------------------------------------
+    OPT   Est. Speedup: 15.98%                                                                                          
+          One or more SMSPs have a much lower number of active cycles than the average number of active cycles. Maximum 
+          instance value is 80.00% above the average, while the minimum instance value is 100.00% below the average.    
+    ----- --------------------------------------------------------------------------------------------------------------
+    OPT   Est. Speedup: 15.98%                                                                                          
+          One or more L1 Slices have a much lower number of active cycles than the average number of active cycles.     
+          Maximum instance value is 80.00% above the average, while the minimum instance value is 100.00% below the     
+          average.                                                                                                      
+
+  calc_force_cutoff_gpu_unsorted[v2,cw51cXTLSUwv1sDUaKthrqNgqqmjgOR3W3Cw6igA9duC0hkwnNGiHEkYkrqQBFBTDEwCyQe21eqwcFW3UoDGjzpQEsgzrtUEAA_3d_3d](Array<double, 2, C, mutable, aligned>, Array<int, 1, C, mutable, aligned>, Array<int, 1, C, mutable, aligned>, Array<double, 2, C, mutable, aligned>, Array<int, 1, C, mutable, aligned>, double, double, double, double, Array<double, 1, C, mutable, aligned>) (8, 1, 1)x(128, 1, 1), Context 1, Stream 7, Device 0, CC 7.5
+    Section: GPU Speed Of Light Throughput
+    ----------------------- ----------- ------------
+    Metric Name             Metric Unit Metric Value
+    ----------------------- ----------- ------------
+    DRAM Frequency                  Ghz         5.00
+    SM Frequency                    Mhz       584.98
+    Elapsed Cycles                cycle    1,281,660
+    Memory Throughput                 %         0.59
+    DRAM Throughput                   %         0.01
+    Duration                         ms         2.19
+    L1/TEX Cache Throughput           %         2.97
+    L2 Cache Throughput               %         0.02
+    SM Active Cycles              cycle   256,084.10
+    Compute (SM) Throughput           %        14.41
+    ----------------------- ----------- ------------
+
+    OPT   This kernel grid is too small to fill the available resources on this device, resulting in only 0.0 full      
+          waves across all SMs. Look at Launch Statistics for more details.                                             
+
+    Section: GPU Speed Of Light Roofline Chart
+    INF   The ratio of peak float (fp32) to double (fp64) performance on this device is 32:1. The workload achieved     
+          close to 0% of this device's fp32 peak performance and  close to 0% of its fp64 peak performance. See the     
+          Kernel Profiling Guide (https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#roofline) for more   
+          details on roofline analysis.                                                                                 
+
+    Section: GPU and Memory Workload Distribution
+    -------------------------- ----------- ------------
+    Metric Name                Metric Unit Metric Value
+    -------------------------- ----------- ------------
+    Average DRAM Active Cycles       cycle     1,283.50
+    Total DRAM Elapsed Cycles        cycle   87,566,336
+    Average L1 Active Cycles         cycle   256,084.10
+    Total L1 Elapsed Cycles          cycle   51,267,168
+    Average L2 Active Cycles         cycle     4,732.25
+    Total L2 Elapsed Cycles          cycle   59,942,272
+    Average SM Active Cycles         cycle   256,084.10
+    Total SM Elapsed Cycles          cycle   51,267,168
+    Average SMSP Active Cycles       cycle   256,059.94
+    Total SMSP Elapsed Cycles        cycle  205,068,672
+    -------------------------- ----------- ------------
+
+    OPT   Est. Speedup: 15.98%                                                                                          
+          One or more SMs have a much lower number of active cycles than the average number of active cycles. Maximum   
+          instance value is 80.00% above the average, while the minimum instance value is 100.00% below the average.    
+    ----- --------------------------------------------------------------------------------------------------------------
+    OPT   Est. Speedup: 15.98%                                                                                          
+          One or more SMSPs have a much lower number of active cycles than the average number of active cycles. Maximum 
+          instance value is 80.00% above the average, while the minimum instance value is 100.00% below the average.    
+    ----- --------------------------------------------------------------------------------------------------------------
+    OPT   Est. Speedup: 15.98%                                                                                          
+          One or more L1 Slices have a much lower number of active cycles than the average number of active cycles.     
+          Maximum instance value is 80.00% above the average, while the minimum instance value is 100.00% below the     
+          average.                                                                                                      
+
+  calc_force_cutoff_gpu_unsorted[v2,cw51cXTLSUwv1sDUaKthrqNgqqmjgOR3W3Cw6igA9duC0hkwnNGiHEkYkrqQBFBTDEwCyQe21eqwcFW3UoDGjzpQEsgzrtUEAA_3d_3d](Array<double, 2, C, mutable, aligned>, Array<int, 1, C, mutable, aligned>, Array<int, 1, C, mutable, aligned>, Array<double, 2, C, mutable, aligned>, Array<int, 1, C, mutable, aligned>, double, double, double, double, Array<double, 1, C, mutable, aligned>) (8, 1, 1)x(128, 1, 1), Context 1, Stream 7, Device 0, CC 7.5
+    Section: GPU Speed Of Light Throughput
+    ----------------------- ----------- ------------
+    Metric Name             Metric Unit Metric Value
+    ----------------------- ----------- ------------
+    DRAM Frequency                  Ghz         5.00
+    SM Frequency                    Mhz       584.98
+    Elapsed Cycles                cycle    1,296,205
+    Memory Throughput                 %         0.59
+    DRAM Throughput                   %         0.01
+    Duration                         ms         2.22
+    L1/TEX Cache Throughput           %         2.97
+    L2 Cache Throughput               %         0.02
+    SM Active Cycles              cycle   258,992.17
+    Compute (SM) Throughput           %        14.40
+    ----------------------- ----------- ------------
+
+    OPT   This kernel grid is too small to fill the available resources on this device, resulting in only 0.0 full      
+          waves across all SMs. Look at Launch Statistics for more details.                                             
+
+    Section: GPU Speed Of Light Roofline Chart
+    INF   The ratio of peak float (fp32) to double (fp64) performance on this device is 32:1. The workload achieved     
+          close to 0% of this device's fp32 peak performance and  close to 0% of its fp64 peak performance. See the     
+          Kernel Profiling Guide (https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#roofline) for more   
+          details on roofline analysis.                                                                                 
+
+    Section: GPU and Memory Workload Distribution
+    -------------------------- ----------- ------------
+    Metric Name                Metric Unit Metric Value
+    -------------------------- ----------- ------------
+    Average DRAM Active Cycles       cycle        1,288
+    Total DRAM Elapsed Cycles        cycle   88,567,808
+    Average L1 Active Cycles         cycle   258,992.17
+    Total L1 Elapsed Cycles          cycle   51,851,744
+    Average L2 Active Cycles         cycle     4,018.09
+    Total L2 Elapsed Cycles          cycle   60,622,528
+    Average SM Active Cycles         cycle   258,992.17
+    Total SM Elapsed Cycles          cycle   51,851,744
+    Average SMSP Active Cycles       cycle   258,968.14
+    Total SMSP Elapsed Cycles        cycle  207,406,976
+    -------------------------- ----------- ------------
+
+    OPT   Est. Speedup: 15.98%                                                                                          
+          One or more SMs have a much lower number of active cycles than the average number of active cycles. Maximum   
+          instance value is 80.00% above the average, while the minimum instance value is 100.00% below the average.    
+    ----- --------------------------------------------------------------------------------------------------------------
+    OPT   Est. Speedup: 15.98%                                                                                          
+          One or more SMSPs have a much lower number of active cycles than the average number of active cycles. Maximum 
+          instance value is 80.00% above the average, while the minimum instance value is 100.00% below the average.    
+    ----- --------------------------------------------------------------------------------------------------------------
+    OPT   Est. Speedup: 15.98%                                                                                          
+          One or more L1 Slices have a much lower number of active cycles than the average number of active cycles.     
+          Maximum instance value is 80.00% above the average, while the minimum instance value is 100.00% below the     
+          average.                                                                                                      
+
