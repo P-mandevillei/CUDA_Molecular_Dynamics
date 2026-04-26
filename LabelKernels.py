@@ -42,6 +42,7 @@ def efficient_neighbor_check_kernel(
 @cuda.jit
 def calc_force_cutoff_gpu_unsorted(
     forces,
+    unique_labels,
     cell_start,
     positions,
     org_idx,
@@ -112,8 +113,12 @@ def calc_force_cutoff_gpu_unsorted(
 
                 nbr = nx + ny * n_cells + nz * n_cells * n_cells
 
-                start = cell_start[nbr]
-                end = cell_start[nbr + 1]
+                neighbor_start = efficient_neighbor_check_kernel(unique_labels, nbr)
+                if neighbor_start == -1:
+                    continue
+
+                start = cell_start[neighbor_start]
+                end = cell_start[neighbor_start + 1]
 
                 for j in range(start, end):
                     if j == i:
@@ -148,6 +153,55 @@ def calc_force_cutoff_gpu_unsorted(
     forces[0, i_o] = force_x
     forces[1, i_o] = force_y
     forces[2, i_o] = force_z
+
+def calc_force_cutoff_gpu_unsorted_wrapper(forces, positions, const_params):
+    labels_d = cp.zeros(positions.shape[1], dtype=cp.int32)
+    cell_size = CELL_SIZE
+    dim = float(const_params[BOX_SIZE_IDX] / cell_size)
+    box_size = float(const_params[BOX_SIZE_IDX])
+    cutoff = float(const_params[SIGMA_IDX] * CUTOFF_COEFF)
+    n_total_cells = dim ** 3
+    grid_size = (positions.shape[1] + CUTOFF_BLOCK_SIZE - 1) // CUTOFF_BLOCK_SIZE
+
+    # label stage
+    atom_label_kernel[grid_size, CUTOFF_BLOCK_SIZE](labels_d, positions, cell_size, dim)
+    cuda.synchronize()
+
+    # sort + build cell_start stage
+    order = cp.argsort(labels_d)
+    labels_sorted = labels_d[order]
+    positions_sorted = cp.empty_like(positions)
+    positions_sorted[:] = positions[:, order]
+    org_idx = cp.arange(positions.shape[1], dtype=cp.int32)
+    org_idx[:] = order
+
+
+    # counts = cp.bincount(labels_sorted, minlength=n_total_cells)
+    # cell_start = cp.zeros(n_total_cells + 1, dtype=cp.int32)
+    # cell_start[1:] = cp.cumsum(counts)
+    unique_labels, counts_unique = cp.unique(labels_sorted, return_counts=True)
+    cell_start = cp.zeros(unique_labels.size + 1, dtype=cp.int32)
+    cell_start[1:] = cp.cumsum(counts_unique)
+
+
+    # force stage
+    unique_labels_nb = cuda.as_cuda_array(unique_labels)
+    cell_start_nb = cuda.as_cuda_array(cell_start)
+    positions_sorted_nb = cuda.as_cuda_array(positions_sorted)
+    orig_idx_nb = cuda.as_cuda_array(org_idx)
+    calc_force_cutoff_gpu_unsorted[grid_size, CUTOFF_BLOCK_SIZE](
+        forces,
+        cell_start_nb,
+        unique_labels_nb,
+        positions_sorted_nb,
+        orig_idx_nb,
+        cell_size,
+        box_size,
+        dim,
+        cutoff,
+        const_params
+    )
+    cuda.synchronize()
 
 
 # positions, forces are sorted by original indices, so that forces[i_o] corresponds to positions[i_o]
@@ -320,49 +374,6 @@ def calc_force_cutoff_gpu_sorted_wrapper(forces, positions, org_idx, const_param
     )
     cuda.synchronize()
     return order
-
-
-def calc_force_cutoff_gpu_unsorted_wrapper(forces, positions, const_params):
-    labels_d = cp.zeros(positions.shape[1], dtype=cp.int32)
-    cell_size = CELL_SIZE
-    dim = float(const_params[BOX_SIZE_IDX] / cell_size)
-    box_size = float(const_params[BOX_SIZE_IDX])
-    cutoff = float(const_params[SIGMA_IDX] * CUTOFF_COEFF)
-    n_total_cells = dim ** 3
-    grid_size = (positions.shape[1] + CUTOFF_BLOCK_SIZE - 1) // CUTOFF_BLOCK_SIZE
-
-    # label stage
-    atom_label_kernel[grid_size, CUTOFF_BLOCK_SIZE](labels_d, positions, cell_size, dim)
-    cuda.synchronize()
-
-    # sort + build cell_start stage
-    order = cp.argsort(labels_d)
-    labels_sorted = labels_d[order]
-    positions_sorted = cp.empty_like(positions)
-    positions_sorted[:] = positions[:, order]
-    org_idx = cp.arange(positions.shape[1], dtype=cp.int32)
-    org_idx[:] = order
-
-    counts = cp.bincount(labels_sorted, minlength=n_total_cells)
-    cell_start = cp.zeros(n_total_cells + 1, dtype=cp.int32)
-    cell_start[1:] = cp.cumsum(counts)
-
-    # force stage
-    cell_start_nb = cuda.as_cuda_array(cell_start)
-    positions_sorted_nb = cuda.as_cuda_array(positions_sorted)
-    orig_idx_nb = cuda.as_cuda_array(org_idx)
-    calc_force_cutoff_gpu_unsorted[grid_size, CUTOFF_BLOCK_SIZE](
-        forces,
-        cell_start_nb,
-        positions_sorted_nb,
-        orig_idx_nb,
-        cell_size,
-        box_size,
-        dim,
-        cutoff,
-        const_params
-    )
-    cuda.synchronize()
 
 @cuda.jit
 def recover_kernel(recover_array, candidate_array, org_idx, n):
