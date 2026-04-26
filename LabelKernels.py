@@ -201,7 +201,7 @@ def calc_force_cutoff_gpu_unsorted_wrapper(forces, positions, const_params):
         cutoff,
         const_params
     )
-    cuda.synchronize()
+    # cuda.synchronize()
 
 
 # positions, forces are sorted by original indices, so that forces[i_o] corresponds to positions[i_o]
