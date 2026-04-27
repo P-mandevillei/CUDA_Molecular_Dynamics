@@ -1,8 +1,89 @@
-TODO:
-- get potential energy
-- get forces
-- get center of mass (?)
-- get avg bond length
-- get max distance
-- get radius of gyration
-- run
+# CUDA Molecular Dynamics for Linear Polymers
+
+This repository contains a Molecular Dynamics (MD) simulation engine for linear polymer chains, utilizing both CPU and GPU (CUDA) implementations to accelerate force computations. The simulation employs the **Velocity Verlet** integration algorithm along with a **Velocity Rescaling Thermostat** to maintain system temperature in an NVT ensemble.
+
+## Project Structure
+
+The project code is divided into the following key modules:
+
+*   **`linear_polymer_md.py`**: The main entry point for running simulations via the command-line interface.
+*   **`VelocityVerlet.py`**: Implements the Velocity Verlet integration steps, temperature rescaling, and applies periodic boundary conditions. It also contains utility functions for exporting trajectories (`.traj` format) and topology files (`.psf`).
+*   **`Forces.py`**: Defines the physical interactions (Harmonic bonds between adjacent monomers, and repulsive/attractive Lennard-Jones potentials). It also handles the initialization of polymer chain positions and Maxwell-Boltzmann distributed velocities.
+*   **`ExactKernels.py` & `LabelKernels.py`**: These modules contain the core implementations of the force calculations.
+*   **`Constants.py`**: Defines physical constants, GPU block dimensions, cutoff radii, and other global configuration values used throughout the project.
+
+## Prerequisites
+
+* Install the [uv](https://docs.astral.sh/uv/) package manager.
+
+* Ensure you have a compatible NVIDIA GPU and the CUDA toolkit (version 12.x) properly installed to utilize the `cupy` and `numba.cuda` acceleration features.
+
+## Running the Simulation
+
+You can execute a simulation using the `linear_polymer_md.py` script. The script offers various configuration parameters to control the physical properties of the polymer, the simulation environment, and the backend algorithm used to calculate forces.
+
+### Basic Usage
+
+The only strictly required argument is `--n_atoms` (the number of monomers in the polymer chain):
+
+```bash
+python linear_polymer_md.py --n_atoms 100
+```
+
+### Advanced Usage & Arguments
+
+You can heavily customize the simulation by supplying the following optional arguments:
+
+#### System and Physical Parameters
+*   `--n_atoms` (int, **Required**): Number of monomers in the linear polymer chain.
+*   `--k` (float, default: `500.0`): Spring constant for harmonic bonds between monomers.
+*   `--r0` (float, default: `1.0`): Equilibrium bond distance.
+*   `--epsilon_attractive` (float, default: `0.5`): Lennard-Jones attractive parameter.
+*   `--epsilon_repulsive` (float, default: `1.0`): Lennard-Jones repulsive parameter.
+*   `--sigma` (float, default: `1.0`): Lennard-Jones distance parameter.
+*   `--mass` (float, default: `1.0`): Mass of a single monomer.
+*   `--box_size` (float, default: `n_atoms * r0 * 2.5`): Length of the cubic simulation box. Periodic boundary conditions are applied.
+
+#### Simulation Dynamics
+*   `--dt` (float, default: `0.01`): Time step for the Velocity Verlet integration.
+*   `--steps` (int, default: `1001`): Total number of simulation steps to run.
+*   `--temperature` (float, default: `0.5`): Target temperature for the simulation.
+*   `--rescale_interval` (int, default: `100`): Frequency (in steps) at which to apply the Velocity Rescaling Thermostat.
+*   `--save_interval` (int, default: `10`): Frequency (in steps) to save frames to the trajectory.
+*   `--seed` (int, default: `42`): Random seed for reproducibility.
+
+#### Output Configuration
+*   `--out-top` (string): File path to save the generated system topology in `.psf` format.
+*   `--out-traj` (string): File path to save the resulting simulation trajectory.
+*   `-v`, `--verbose`: Enable detailed logging and progress bars.
+
+#### Algorithm Selection
+The `--algo` argument dictates how inter-particle forces are computed. 
+*   **Exact Methods ($O(N^2)$ calculations):**
+    *   `sequential`: Standard CPU implementation.
+    *   `segmented`: GPU segmented implementation.
+    *   `implicit-matrix`: GPU implementation utilizing implicit matrices.
+    *   `explicit-matrix`: GPU implementation utilizing explicit matrices.
+*   **Cutoff Methods (Spatial partitioning):**
+    *   `cutoff-sequential`: CPU implementation utilizing neighbor lists/cutoffs.
+    *   `cutoff-unsorted`: GPU implementation utilizing cutoffs.
+    *   `cutoff-sorted`: Optimized GPU implementation utilizing cutoffs and memory-sorted arrays for better coalesced memory access.
+
+### Examples
+
+**1. Run a long simulation on the GPU using sorted cutoff algorithms and save the outputs:**
+
+```bash
+python linear_polymer_md.py --n_atoms 500 \
+                            --steps 10000 \
+                            --algo cutoff-sorted \
+                            --out-top chain.psf \
+                            --out-traj chain_traj.txt \
+                            --verbose
+```
+
+**2. Run a small simulation on the CPU sequentially:**
+
+```bash
+python linear_polymer_md.py --n_atoms 50 --algo sequential --steps 5000
+```
