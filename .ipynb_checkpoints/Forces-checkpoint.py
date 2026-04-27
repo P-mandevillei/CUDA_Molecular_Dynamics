@@ -123,28 +123,3 @@ def calc_force(distance, params, type):
 @nb.njit
 def minimum_image_1d(dx, box_size):
     return dx - box_size * math.floor((dx / box_size) + 0.5)
-
-# ---------------------------- Cutoff Kernels --------------------------------
-@nb.njit
-def calc_force_cutoff_sequential(
-  forces: np.ndarray, # global forces array (output)
-  positions: np.ndarray, # global positions array (input)
-  cutoff: float
-):
-  forces.fill(0)
-  params = const_params
-  n_particles = positions.shape[1]
-  for i in range(n_particles-1):
-    for j in range(i+1, n_particles):
-      distance = 0
-      for k in range(SPACE_N_DIM):
-        dx = minimum_image_1d(positions[k, i] - positions[k, j], params[BOX_SIZE_IDX])
-        distance += dx**2
-      distance = math.sqrt(distance)
-      if distance > cutoff:
-        continue
-      magnitude = calc_force(distance, params, j - i)
-      for k in range(SPACE_N_DIM):
-        f = magnitude * minimum_image_1d(positions[k, i] - positions[k, j], params[BOX_SIZE_IDX]) / max(distance, DIV_BY_ZERO_GUARD)
-        forces[k, i] += f
-        forces[k, j] -= f
