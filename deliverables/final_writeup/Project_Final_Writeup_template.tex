@@ -243,6 +243,7 @@ The explicit force matrix requires a large chunk of global memory and leads to h
 \begin{algorithm}
 \caption{Implicit Force Matrix} \label{algo:implicitMatrix}
 \begin{algorithmic}[1]
+\State fill(\textbf{forces}, 0)
 \State $bid \gets \text{Global Block ID}$
 \State $tid \gets \text{Local Thread ID}$
 \State $b_{row}, b_{col} \gets \text{Map } bid \text{ to 2D upper triangular tile indices}$
@@ -792,6 +793,10 @@ Future work should be directed to identifying the flaw with the cutoff method. A
 In addition, we only implemented kernels for the linear monopolymer. Future study on adapting those kernels to heterogeneous systems and non-linear systems will help generalize the approach. In addition, solvent systems typically contain a much larger number of atoms and would benefit significantly from GPU acceleration.
 
 Finally, simulation of an MD system is only the first step in an MD study. Much work remains on the analysis of the trajectories, which involves a large number of parallelizable operations, including pairwise energy calculations, trajectory alignment, and unwrapping of molecules in the unit cell. Future work could develop GPU kernels that accelerate the analysis of thousands of frames of trajectories.
+
+\section{Data Availability}
+
+Code and data are available at \url{https://github.com/P-mandevillei/CUDA_Molecular_Dynamics}.
 
 \begin{thebibliography}{9}
 

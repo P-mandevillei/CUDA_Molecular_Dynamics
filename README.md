@@ -20,26 +20,36 @@ The project code is divided into the following key modules:
 
 ## Running the Simulation
 
-You can execute a simulation using the `linear_polymer_md.py` script. The script offers various configuration parameters to control the physical properties of the polymer, the simulation environment, and the backend algorithm used to calculate forces.
+```bash
+cd CUDA_Molecular_Dynamics
+uv sync
+uv run python linear_polymer_md.py --help
+```
+
+Fast start with 1000 atoms on the GPU:
+
+```bash
+uv run linear_polymer_md.py --n_atoms 1000 --algo implicit-matrix -v
+```
 
 ### Basic Usage
 
 The only strictly required argument is `--n_atoms` (the number of monomers in the polymer chain):
 
 ```bash
-python linear_polymer_md.py --n_atoms 100
+uv run linear_polymer_md.py --n_atoms 100
 ```
 
 ### Advanced Usage & Arguments
 
-You can heavily customize the simulation by supplying the following optional arguments:
+You can customize the simulation by supplying the following optional arguments:
 
 #### System and Physical Parameters
 *   `--n_atoms` (int, **Required**): Number of monomers in the linear polymer chain.
 *   `--k` (float, default: `500.0`): Spring constant for harmonic bonds between monomers.
 *   `--r0` (float, default: `1.0`): Equilibrium bond distance.
-*   `--epsilon_attractive` (float, default: `0.5`): Lennard-Jones attractive parameter.
-*   `--epsilon_repulsive` (float, default: `1.0`): Lennard-Jones repulsive parameter.
+*   `--epsilon_attractive` (float, default: `0.5`): Lennard-Jones attractive well depth.
+*   `--epsilon_repulsive` (float, default: `1.0`): Lennard-Jones repulsive well depth.
 *   `--sigma` (float, default: `1.0`): Lennard-Jones distance parameter.
 *   `--mass` (float, default: `1.0`): Mass of a single monomer.
 *   `--box_size` (float, default: `n_atoms * r0 * 2.5`): Length of the cubic simulation box. Periodic boundary conditions are applied.
@@ -61,29 +71,11 @@ You can heavily customize the simulation by supplying the following optional arg
 The `--algo` argument dictates how inter-particle forces are computed. 
 *   **Exact Methods ($O(N^2)$ calculations):**
     *   `sequential`: Standard CPU implementation.
-    *   `segmented`: GPU segmented implementation.
-    *   `implicit-matrix`: GPU implementation utilizing implicit matrices.
-    *   `explicit-matrix`: GPU implementation utilizing explicit matrices.
-*   **Cutoff Methods (Spatial partitioning):**
-    *   `cutoff-sequential`: CPU implementation utilizing neighbor lists/cutoffs.
+    *   `segmented`: Naive GPU implementation.
+    *   `explicit-matrix`: GPU implementation utilizing an explicit force matrix.
+    *   `implicit-matrix`: GPU implementation utilizing an implicit force matrix.
+    
+*   **Cutoff Methods ($O(N)$ calculations):**
+    *   `cutoff-sequential`: CPU implementation utilizing cutoff distances.
     *   `cutoff-unsorted`: GPU implementation utilizing cutoffs.
-    *   `cutoff-sorted`: Optimized GPU implementation utilizing cutoffs and memory-sorted arrays for better coalesced memory access.
-
-### Examples
-
-**1. Run a long simulation on the GPU using sorted cutoff algorithms and save the outputs:**
-
-```bash
-python linear_polymer_md.py --n_atoms 500 \
-                            --steps 10000 \
-                            --algo cutoff-sorted \
-                            --out-top chain.psf \
-                            --out-traj chain_traj.txt \
-                            --verbose
-```
-
-**2. Run a small simulation on the CPU sequentially:**
-
-```bash
-python linear_polymer_md.py --n_atoms 50 --algo sequential --steps 5000
-```
+    *   `cutoff-sorted`: Optimized GPU cutoff implementation that reduces the cost of re-sorting labels.
