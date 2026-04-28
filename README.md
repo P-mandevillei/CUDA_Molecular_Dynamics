@@ -1,5 +1,7 @@
 # CUDA Molecular Dynamics for Linear Polymers
 
+[Project Writeup](./deliverables/final_writeup/Project_Final_Writeup_template.pdf)
+
 This repository contains a Molecular Dynamics (MD) simulation engine for linear polymer chains, utilizing both CPU and GPU (CUDA) implementations to accelerate force computations. The simulation employs the **Velocity Verlet** integration algorithm along with a **Velocity Rescaling Thermostat** to maintain system temperature in an NVT ensemble.
 
 ## Project Structure
